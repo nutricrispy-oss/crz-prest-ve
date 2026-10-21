@@ -142,7 +142,7 @@ function vHist(){
 }
 function vAj(){
   const lb=lastB(),ask=ls.g(K_ASK)!=='0';
-  return `${pinCard()}<div class="card"><h3>☁️ Respaldo en Google Drive</h3>
+  return `${instalarCard()}${pinCard()}<div class="card"><h3>☁️ Respaldo en Google Drive</h3>
   <div class="sp">Último respaldo: <b class="${lb===today()?'ok':''}">${lb?fmt(lb)+(lb===today()?' (hoy ✓)':''):'nunca'}</b></div>
   <label class="chk" style="display:flex;gap:8px;align-items:center;margin:10px 0"><input type="checkbox" style="width:auto" ${ask?'checked':''} onchange="toggleAsk(this.checked)"> Preguntar una vez al día al abrir la app</label>
   <div class="g2"><button class="big" style="padding:12px;font-size:15px" onclick="backupDrive()">Respaldar ahora</button><button class="btn" onclick="restoreDrive()">Restaurar de Drive</button></div>
@@ -369,7 +369,7 @@ function generarAtrasados(){
 }
 function alertas(){
   if(fecha!==today())return '';
-  const m=nMora(),v=nVenc(),fl=diasFaltan();let h='';
+  const m=nMora(),v=nVenc(),fl=diasFaltan();let h=bannerInstalar();
   if(fl.length)h+=`<div class="card" style="border-color:var(--wa)"><b>📋 Falta registrar ${fl.length} día${fl.length>1?'s':''}: ${fl.map(f=>fmt(f).slice(0,5)).join(', ')}</b><div class="sp">Generá las cuotas de esos días de una vez y revertí las que no se pagaron.</div><button class="big mt" onclick="generarAtrasados()">⚡ Generar días atrasados</button></div>`;
   if(m)h+=`<div class="card" onclick="cf.f='mora';cf.o='mora';view='corr';render()" style="cursor:pointer;border-color:var(--er)"><b>⚠️ ${m} corredor${m>1?'es':''} con atraso</b><div class="sp">Tocá para verlos y enviar recordatorios</div></div>`;
   if(v)h+=`<div class="card" onclick="cf.f='venc';cf.o='venc';view='corr';render()" style="cursor:pointer;border-color:var(--wa)"><b>🔔 ${v} terminan de pagar en 7 cuotas o menos</b><div class="sp">Buen momento para ofrecer la renovación</div></div>`;
@@ -466,6 +466,28 @@ function lock(cb){
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Date.now();else if(ls.g(K_PIN)&&hiddenAt&&Date.now()-hiddenAt>120000)lock()});
 
+/* ===== Instalación ===== */
+let dip=null;
+const K_NOINST='crz_villa_noinst';
+const isStandalone=()=>{try{return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(e){return false}};
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent||'');
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e;if(view==='aj'||view==='hoy')render()});
+addEventListener('appinstalled',()=>{dip=null;toast('✅ App instalada');render()});
+async function instalar(){
+  if(dip){dip.prompt();try{await dip.userChoice}catch(e){}dip=null;render();return}
+  const m=modal(`<h3>📲 Instalar CRz VILLA</h3><div class="sp" style="line-height:1.7">${isIOS()
+   ?'1. Tocá el botón <b>Compartir</b> (cuadrado con flecha) de Safari.<br>2. Elegí <b>Añadir a pantalla de inicio</b>.<br>3. Confirmá con <b>Añadir</b>.'
+   :'1. Abrí el menú <b>⋮</b> de tu navegador (arriba a la derecha).<br>2. Tocá <b>Instalar app</b> o <b>Añadir a la pantalla de inicio</b>.<br>3. Confirmá.<br><br>Si no aparece la opción, abrí esta página directamente en Chrome.'}</div><button class="big mt" id="ix">Entendido</button>`);
+  m.querySelector('#ix').onclick=()=>m.remove();
+}
+function instalarCard(){
+  if(isStandalone())return `<div class="card"><h3>📲 App instalada</h3><div class="sp">Estás usando CRz VILLA como app en tu celular. ✅</div></div>`;
+  return `<div class="card"><h3>📲 Instalar en tu celular</h3><div class="sp">Se agrega a tu pantalla de inicio con su propio ícono y funciona sin conexión.</div><button class="big mt" onclick="instalar()">Instalar app</button></div>`;
+}
+function bannerInstalar(){
+  if(isStandalone()||ls.g(K_NOINST)==='1'||!(dip||isIOS()))return '';
+  return `<div class="card" style="border-color:var(--pr)"><div class="row" style="border:0;padding:0"><div class="n"><b>📲 Instalá la app en tu celular</b><small>Acceso directo, pantalla completa y sin conexión</small></div><button class="btn sm cob" onclick="instalar()">Instalar</button><button class="x" onclick="ls.s(K_NOINST,'1');render()">✕</button></div></div>`;
+}
 const TABS=[['hoy','📅','Hoy'],['corr','👥','Corredores'],['caja','💰','Caja'],['hist','🕘','Historial'],['aj','⚙️','Ajustes']];
 function render(){
   $('#sub').textContent=DIAS[new Date().getDay()]+' '+fmt(today());
