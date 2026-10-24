@@ -87,7 +87,7 @@ const activos=()=>S.corr.filter(c=>c.activo&&c.cuota>0&&saldo(c)>0);
 function generar(f){
   if(dt(f).getDay()===0)return toast('Los domingos se carga solo manual');
   let n=0;
-  activos().forEach(c=>{if(!pagosDe(c,f).length&&!npDe(c,f)){S.pagos.push({id:uid(),c:c.id,f,m:Math.min(c.cuota,saldo(c))});n++}});
+  activos().forEach(c=>{if(f>=(c.desde||'')&&!pagosDe(c,f).length&&!npDe(c,f)){S.pagos.push({id:uid(),c:c.id,f,m:Math.min(c.cuota,saldo(c))});n++}});
   save();render();toast(n?`${n} cobros generados`:'Ya estaba todo generado');
 }
 function revertir(cid,f){
@@ -161,13 +161,14 @@ function vAj(){
 function exportar(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='crz-villa-'+today()+'.json';a.click()}
 function importar(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.corr||!d.pagos)throw 0;S=d;save();render();toast('Respaldo importado')}catch(e){toast('Archivo no válido')}};r.readAsText(f)}
 
-function openForm(t,fs,ok){
+function openForm(t,fs,ok,init){
   const m=document.createElement('div');m.className='modal';
-  m.innerHTML=`<div class="sheet"><h3>${t}</h3>${fs.map(f=>f.t==='chk'?`<label class="chk"><input type="checkbox" id="f_${f.k}" ${f.v?'checked':''}> ${f.l}</label>`:f.t==='sel'?`<label>${f.l}<select id="f_${f.k}">${f.o.map(o=>`<option value="${o[0]}" ${o[0]==f.v?'selected':''}>${o[1]}</option>`).join('')}</select></label>`:`<label>${f.l}<input id="f_${f.k}" value="${f.t==='d'&&f.v?fmt(f.v):(f.v??'')}" ${f.t==='d'?'inputmode="numeric" placeholder="dd/mm/aaaa" oninput="mask(event)"':f.t==='n'?'inputmode="numeric"':''}></label>`).join('')}
+  m.innerHTML=`<div class="sheet"><h3>${t}</h3>${fs.map(f=>f.t==='note'?`<div class="sp" style="margin-bottom:12px;line-height:1.5">${f.html}</div>`:f.t==='chk'?`<label class="chk"><input type="checkbox" id="f_${f.k}" ${f.v?'checked':''}> ${f.l}</label>`:f.t==='sel'?`<label>${f.l}<select id="f_${f.k}">${f.o.map(o=>`<option value="${o[0]}" ${o[0]==f.v?'selected':''}>${o[1]}</option>`).join('')}</select></label>`:`<label>${f.l}<input id="f_${f.k}" value="${f.t==='d'&&f.v?fmt(f.v):f.t==='n'&&f.v?fmtN(f.v):(f.v??'')}" ${f.t==='d'?'inputmode="numeric" placeholder="dd/mm/aaaa" oninput="mask(event)"':f.t==='n'?'inputmode="numeric" oninput="this.value=fmtN(this.value)"':''}></label>`).join('')}
   <div class="g2 mt"><button class="btn" id="fx">Cancelar</button><button class="big" id="fo" style="padding:11px">Guardar</button></div></div>`;
   document.body.appendChild(m);
+  if(init)init(m);
   m.querySelector('#fx').onclick=()=>m.remove();
-  m.querySelector('#fo').onclick=()=>{const r={};for(const f of fs){const e=m.querySelector('#f_'+f.k);let v=f.t==='chk'?e.checked:e.value.trim();
+  m.querySelector('#fo').onclick=()=>{const r={};for(const f of fs){if(f.t==='note')continue;const e=m.querySelector('#f_'+f.k);let v=f.t==='chk'?e.checked:e.value.trim();
     if(f.t==='n')v=parseInt(v.replace(/\D/g,''))||0;
     if(f.t==='d'){const x=v.match(/^(\d\d)\/(\d\d)\/(\d{4})$/);const s=x&&`${x[3]}-${x[2]}-${x[1]}`;if(!s||iso(dt(s))!==s)return toast('Fecha inválida (dd/mm/aaaa)');v=s}
     r[f.k]=v}
@@ -180,11 +181,6 @@ function nuevoCorr(){openForm('Nuevo corredor',[{k:'n',l:'Nombre',t:'s',v:'Corre
 function editCorr(id){const c=cget(id);openForm('Editar '+c.nombre,[{k:'n',l:'Nombre',t:'s',v:c.nombre},{k:'d',l:'Deuda total (Gs.)',t:'n',v:c.deuda},{k:'q',l:'Cuota diaria (Gs.)',t:'n',v:c.cuota},{k:'cap',l:'Monto del préstamo (Gs.)',t:'n',v:CAP(c)},{k:'tel',l:'WhatsApp del cliente (opcional)',t:'s',v:c.tel||''},{k:'a',l:'Activo (entra en "Generar cobros")',t:'chk',v:c.activo}],r=>{
   if(!r.n||!r.d){toast('Nombre y deuda son obligatorios');return false}
   Object.assign(c,{nombre:r.n,deuda:r.d,cuota:r.q,activo:r.a,tel:r.tel,cap:r.cap});save();render();toast('Corredor actualizado')})}
-function renovarCorr(id){const c=cget(id);openForm('Renovar '+c.nombre,[{k:'m',l:'Monto renovado (efectivo entregado, Gs.)',t:'n'},{k:'d',l:'Nueva deuda total (Gs.)',t:'n'},{k:'q',l:'Nueva cuota diaria (Gs.)',t:'n',v:c.cuota},{k:'cap',l:'Monto del nuevo préstamo (Gs.)',t:'n',v:CAP(c)},{k:'f',l:'Fecha de renovación',t:'d',v:today()}],r=>{
-  if(!r.d||!r.q){toast('Indicá nueva deuda y cuota');return false}
-  if(r.m)S.renov.push({id:uid(),c:id,m:r.m,f:r.f});
-  Object.assign(c,{deuda:r.d,cuota:r.q,cap:r.cap,previo:0,desde:r.f,activo:true});save();render();toast('Préstamo renovado')})}
-
 let cyc=null;
 const cStart=i=>iso(new Date(2026,5+2*i,1)),cEnd=i=>iso(new Date(2026,5+2*i+2,0));
 const curCyc=()=>{const n=new Date();return Math.max(0,Math.floor(((n.getFullYear()-2026)*12+n.getMonth()-5)/2))};
@@ -278,7 +274,7 @@ function nextCobro(f,n){let d=f;while(n>0){d=addD(d,1);if(dt(d).getDay()!==0)n--
 function estado(c){
   const t=today(),pg=S.pagos.filter(p=>p.c===c.id&&p.f>=(c.desde||'')).map(p=>p.f).sort();
   const ini=c.desde||pg[0]||t,s=Math.max(saldo(c),0),q=c.cuota?Math.ceil(s/c.cuota):0;
-  const base=(dt(t).getDay()===0||pagosDe(c,t).length)?t:addD(t,-1);
+  const base=(dt(t).getDay()===0||pagosDe(c,t).length||npDe(c,t))?t:addD(t,-1);
   const dias=Math.max(0,Math.round((dt(t)-dt(ini))/864e5))+1,sobra=CAP(c)-s;
   return {ini,dias,pagadas:new Set(pg).size,s,q,venc:q?nextCobro(base,q):t,sobra,cap:CAP(c)};
 }
@@ -341,7 +337,8 @@ function cardCorr(c){
   return `<div class="card"><div class="row" style="border:0;padding:0"><div class="n"><b>${esc(c.nombre)}</b><small>Cuota ${c.cuota?Gs(c.cuota):'—'}${ultPago(c)?' · último pago '+fmt(ultPago(c)):''}</small></div>
   ${m>=2?`<span class="chip c-no">${m} días sin pagar</span>`:''}<span class="chip ${s<=0?'c-ok':q<=7?'c-pe':'c-ok'}" style="margin-left:6px">${s<=0?'Saldado':q+' cuotas'}</span></div>
   <div class="bar"><i style="width:${pc}%"></i></div><div class="sp"><span>Pagado ${Gs(pagado(c))}</span><span>Saldo ${Gs(Math.max(s,0))}</span></div>
-  <div class="g2 mt"><button class="btn sm" onclick="editCorr('${c.id}')">✏️ Editar</button><button class="btn sm" onclick="pagosCorr('${c.id}')">🧾 Pagos</button><button class="btn sm cob" onclick="waCorr('${c.id}')">📲 Estado de cuenta</button><button class="btn sm" onclick="renovarCorr('${c.id}')">🔄 Renovar</button></div>
+  <div class="g3 mt"><button class="btn sm" onclick="editCorr('${c.id}')">✏️ Editar</button><button class="btn sm" onclick="pagosCorr('${c.id}')">🧾 Pagos</button><button class="btn sm" onclick="detalleCuotas('${c.id}')">📅 Detalle</button></div>
+  <div class="g2" style="margin-top:6px"><button class="btn sm cob" onclick="waCorr('${c.id}')">📲 Estado de cuenta</button><button class="btn sm" onclick="renovarCorr('${c.id}')">🔄 Renovar</button></div>
   ${m>=2?`<button class="btn sm rev mt" style="width:100%" onclick="waCorr('${c.id}','mora')">🔔 Recordar atraso por WhatsApp</button>`:''}
   ${q>0&&q<=7&&m<2?`<button class="btn sm cob mt" style="width:100%" onclick="waCorr('${c.id}','venc')">💬 Ofrecer renovación por WhatsApp</button>`:''}</div>`;
 }
@@ -364,7 +361,7 @@ function diasFaltan(){
 function generarAtrasados(){
   const l=diasFaltan();if(!l.length)return;
   if(!confirm('Se generarán las cuotas de: '+l.map(f=>fmt(f).slice(0,5)).join(', ')+'.\nDespués revertís las que no pagaron. ¿Continuar?'))return;
-  let n=0;l.forEach(f=>activos().forEach(c=>{if(!pagosDe(c,f).length&&!npDe(c,f)){S.pagos.push({id:uid(),c:c.id,f,m:Math.min(c.cuota,saldo(c))});n++}}));
+  let n=0;l.forEach(f=>activos().forEach(c=>{if(f>=(c.desde||'')&&!pagosDe(c,f).length&&!npDe(c,f)){S.pagos.push({id:uid(),c:c.id,f,m:Math.min(c.cuota,saldo(c))});n++}}));
   save();render();toast(n+' cobros generados en '+l.length+' día(s)');
 }
 function alertas(){
@@ -488,6 +485,84 @@ function bannerInstalar(){
   if(isStandalone()||ls.g(K_NOINST)==='1'||!(dip||isIOS()))return '';
   return `<div class="card" style="border-color:var(--pr)"><div class="row" style="border:0;padding:0"><div class="n"><b>📲 Instalá la app en tu celular</b><small>Acceso directo, pantalla completa y sin conexión</small></div><button class="btn sm cob" onclick="instalar()">Instalar</button><button class="x" onclick="ls.s(K_NOINST,'1');render()">✕</button></div></div>`;
 }
+/* ===== Renovación automática y detalle de cuotas ===== */
+const INTERES=0.26,NCUOTAS=45;
+const fmtN=n=>{const s=String(n??'').replace(/\D/g,'');return s?s.replace(/\B(?=(\d{3})+(?!\d))/g,'.'):''};
+const nuevaDeuda=cap=>Math.round(cap*(1+INTERES));
+const cuotaDe=d=>Math.round(d/NCUOTAS/100)*100;
+function renovarCorr(id){
+  const c=cget(id),deb=Math.max(saldo(c),0),qd=c.cuota?Math.ceil(deb/c.cuota):0,cap0=CAP(c)||0;
+  openForm('Renovar '+esc(c.nombre),[
+    {t:'note',html:`Debe actualmente: <b>${Gs(deb)}</b> (${qd} cuotas)<br>Interés: <b>${Math.round(INTERES*100)}%</b> · ${NCUOTAS} cuotas · cuota actual ${Gs(c.cuota)}`},
+    {k:'m',l:'Monto renovado (efectivo entregado, Gs.)',t:'n',v:Math.max(cap0-deb,0)},
+    {k:'d',l:'Nueva deuda total (Gs.)',t:'n',v:nuevaDeuda(cap0)},
+    {k:'q',l:'Nueva cuota diaria (Gs.)',t:'n',v:c.cuota},
+    {k:'cap',l:'Monto del nuevo préstamo (Gs.)',t:'n',v:cap0},
+    {k:'f',l:'Fecha de renovación',t:'d',v:today()}],r=>{
+    if(!r.d||!r.q){toast('Indicá nueva deuda y cuota');return false}
+    if(r.m)S.renov.push({id:uid(),c:id,m:r.m,f:r.f});
+    Object.assign(c,{deuda:r.d,cuota:r.q,cap:r.cap,previo:0,desde:addD(r.f,1),activo:true});save();render();toast('Préstamo renovado')},
+  m=>{
+    const g=k=>m.querySelector('#f_'+k),n=k=>parseInt(String(g(k).value).replace(/\D/g,''))||0,set=(k,v)=>{g(k).value=fmtN(v)};
+    g('cap').addEventListener('input',()=>{const cap=n('cap'),d=nuevaDeuda(cap);set('d',d);set('q',cuotaDe(d));set('m',Math.max(cap-deb,0))});
+    g('d').addEventListener('input',()=>set('q',cuotaDe(n('d'))));
+  });
+}
+
+function cronograma(c,desde){
+  const t=today(),s=Math.max(saldo(c),0),q=c.cuota?Math.ceil(s/c.cuota):0,rows=[];
+  let f=desde,pend=0,g=0;
+  while(g++<500){
+    if(f>t&&pend>=q)break;
+    const dom=dt(f).getDay()===0,ps=pagosDe(c,f),np=npDe(c,f);
+    if(ps.length)rows.push({f,st:'ok',m:ps.reduce((a,p)=>a+p.m,0)});
+    else if(!dom){
+      if(np||(f<t&&diaReg(f)))rows.push({f,st:'no',m:c.cuota});
+      else if(f<t)rows.push({f,st:'sr',m:c.cuota});
+      else if(pend<q){rows.push({f,st:'pe',m:pend<q-1?c.cuota:s-c.cuota*(q-1)});pend++}
+    }
+    f=addD(f,1);
+  }
+  return rows;
+}
+function inicioDetalle(c){
+  const t=today(),ini=iniCorr(c);let n=0,f=t;
+  while(f>ini&&n<NCUOTAS){f=addD(f,-1);if(dt(f).getDay()!==0)n++}
+  return f>ini?f:ini;
+}
+function resDetalle(c,rows){
+  const r={ok:0,no:0,sr:0,pe:0,sOk:0,sPe:0};
+  rows.forEach(x=>{r[x.st]++;if(x.st==='ok')r.sOk+=x.m;if(x.st==='pe')r.sPe+=x.m});
+  const pe=rows.filter(x=>x.st==='pe');r.venc=pe.length?pe[pe.length-1].f:'';
+  return r;
+}
+const STD={ok:['✅','Pagó','c-ok'],no:['❌','No pagó','c-no'],sr:['⚪','Sin registro','c-pe'],pe:['⏳','Pendiente','']};
+function msgDetalle(c,rows){
+  const r=resDetalle(c,rows),dia=f=>DIAS[dt(f).getDay()].slice(0,3);
+  return `Hola ${c.nombre} 👋\nTe comparto el detalle de tus cuotas al ${fmt(today())}:\n\n💵 Cuota diaria: ${Gs(c.cuota)}\n✅ Pagadas: ${r.ok} (${Gs(r.sOk)})\n`+
+  (r.no?`❌ Sin pagar: ${r.no}\n`:'')+(r.pe?`⏳ Pendientes: ${r.pe} (${Gs(r.sPe)})\n🗓️ Vencimiento estimado: ${fmt(r.venc)}\n`:'🎉 ¡Crédito saldado!\n')+'\n'+
+  rows.map(x=>`${STD[x.st][0]} ${dia(x.f)} ${fmt(x.f).slice(0,5)} · ${x.st==='ok'||x.st==='pe'?Gs(x.m):STD[x.st][1].toLowerCase()}`).join('\n')+
+  `\n\nCualquier consulta avisame 🙌`;
+}
+function detalleCuotas(id,desdeIn,telIn){
+  const c=cget(id),desde=desdeIn||inicioDetalle(c),rows=cronograma(c,desde),r=resDetalle(c,rows);
+  const m=modal(`<h3>📅 Detalle de cuotas · ${esc(c.nombre)}</h3>
+  <div class="kg"><div><small>Pagadas</small><b class="ok">${r.ok} · ${Gs(r.sOk)}</b></div><div><small>No pagó</small><b style="color:${r.no?'var(--er)':'inherit'}">${r.no}</b></div>
+  <div><small>Pendientes</small><b>${r.pe} · ${Gs(r.sPe)}</b></div><div><small>Vence aprox.</small><b>${r.venc?fmt(r.venc):'—'}</b></div></div>
+  <label class="mt" style="display:block">Ver desde (dd/mm/aaaa)<input id="dd" inputmode="numeric" placeholder="dd/mm/aaaa" value="${fmt(desde)}" oninput="mask(event)"></label>
+  <div style="margin:8px 0">${rows.map(x=>{const s=STD[x.st];return `<div class="row"><div class="n"><b>${fmt(x.f)}</b><small>${DIAS[dt(x.f).getDay()]}</small></div><b>${Gs(x.m)}</b>${x.st==='pe'?`<span class="chip" style="margin-left:8px;background:var(--bd);color:var(--mu)">${s[1]}</span>`:`<span class="chip ${s[2]}" style="margin-left:8px">${s[1]}</span>`}</div>`}).join('')||'<div class="sp">Sin cuotas para mostrar.</div>'}</div>
+  <label style="display:block">WhatsApp del cliente (opcional)<input id="dt" inputmode="tel" placeholder="0981 123 456" value="${esc(telIn??c.tel??'')}"></label>
+  <div class="g2 mt"><button class="btn" id="dc">Copiar</button><button class="big" id="ds" style="padding:11px">Enviar por WhatsApp</button></div><button class="btn mt" id="dx" style="width:100%">Cerrar</button>`);
+  const tel=()=>m.querySelector('#dt').value;
+  m.querySelector('#dd').addEventListener('change',e=>{
+    const x=e.target.value.match(/^(\d\d)\/(\d\d)\/(\d{4})$/),s=x&&`${x[3]}-${x[2]}-${x[1]}`;
+    if(!s||iso(dt(s))!==s)return toast('Fecha inválida (dd/mm/aaaa)');
+    const t=tel();m.remove();detalleCuotas(id,s,t)});
+  m.querySelector('#ds').onclick=()=>{if(tel()!==(c.tel||'')){c.tel=tel();save()}waOpen(msgDetalle(c,rows),tel())};
+  m.querySelector('#dc').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(msgDetalle(c,rows)).then(()=>toast('Detalle copiado'),()=>toast('No se pudo copiar'))};
+  m.querySelector('#dx').onclick=()=>m.remove();
+}
+
 const TABS=[['hoy','📅','Hoy'],['corr','👥','Corredores'],['caja','💰','Caja'],['hist','🕘','Historial'],['aj','⚙️','Ajustes']];
 function render(){
   $('#sub').textContent=DIAS[new Date().getDay()]+' '+fmt(today());
