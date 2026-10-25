@@ -44,7 +44,7 @@ h3{margin:4px 0 10px;font-size:16px}
 .tabs button span{display:block;font-size:20px}.tabs button.on{color:var(--pr);font-weight:700}
 #toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#0f1f1d;color:#fff;padding:10px 16px;border-radius:12px;opacity:0;transition:.25s;pointer-events:none;z-index:9;max-width:90%;text-align:center}
 #toast.on{opacity:1}
-.hid{display:none}.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}.lock{position:fixed;inset:0;background:linear-gradient(135deg,#4338ca,#6366f1);z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:12px;padding:20px;text-align:center}.lock input{max-width:230px;text-align:center;font-size:28px;letter-spacing:10px;color:#0f1f1d;background:#fff}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.sheet textarea{margin-top:4px}.ok{color:var(--ok)}.kg{display:grid;grid-template-columns:1fr 1fr;gap:12px}.kg small{color:var(--mu);display:block}.kg b{font-size:17px}.x{border:0;background:none;color:var(--er);font-size:18px;padding:4px 8px}.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;display:flex;align-items:flex-end;justify-content:center}.sheet{background:var(--card);width:100%;max-width:640px;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}.sheet label{display:block;margin-bottom:10px;color:var(--mu);font-size:13px}.sheet label input,.sheet label select{margin-top:4px;color:var(--tx)}.sheet .chk{display:flex;gap:8px;align-items:center;color:var(--tx);font-size:15px}.sheet .chk input{width:auto;margin:0}.sm{padding:5px 9px;font-size:12px}.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mt{margin-top:10px}
+.hid{display:none}.nt{color:var(--mu);font-size:13px;line-height:1.5;margin-bottom:12px}.lb{display:block;color:var(--mu);font-size:13px}.lb input{margin-top:4px;color:var(--tx)}.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}.lock{position:fixed;inset:0;background:linear-gradient(135deg,#4338ca,#6366f1);z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:12px;padding:20px;text-align:center}.lock input{max-width:230px;text-align:center;font-size:28px;letter-spacing:10px;color:#0f1f1d;background:#fff}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.sheet textarea{margin-top:4px}.ok{color:var(--ok)}.kg{display:grid;grid-template-columns:1fr 1fr;gap:12px}.kg small{color:var(--mu);display:block}.kg b{font-size:17px}.x{border:0;background:none;color:var(--er);font-size:18px;padding:4px 8px}.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;display:flex;align-items:flex-end;justify-content:center}.sheet{background:var(--card);width:100%;max-width:640px;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}.sheet label{display:block;margin-bottom:10px;color:var(--mu);font-size:13px}.sheet label input,.sheet label select{margin-top:4px;color:var(--tx)}.sheet .chk{display:flex;gap:8px;align-items:center;color:var(--tx);font-size:15px}.sheet .chk input{width:auto;margin:0}.sm{padding:5px 9px;font-size:12px}.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mt{margin-top:10px}
 </style>
 </head>
 <body>
@@ -130,16 +130,6 @@ function vHoy(){
   <button class="big mt" onclick="const m=parseInt($('#mm').value.replace(/\\D/g,''));cobrar($('#mc').value,fecha,m)">Agregar cobro</button></details></div>`;
   return h;
 }
-function vHist(){
-  let h=`<div class="card"><h3>Últimos 31 días</h3>`;
-  for(let i=0;i<31;i++){const f=addD(today(),-i),t=totalDia(f),d=dt(f).getDay(),np=S.nopago.filter(p=>p.f===f).length;
-    h+=`<div class="row" onclick="fecha='${f}';view='hoy';render()"><div class="n"><b>${fmt(f)}</b><small>${DIAS[d]}${np?' · '+np+' no pagó':''}</small></div><b>${t?Gs(t):'—'}</b></div>`}
-  h+=`</div><div class="card"><h3>No pagó (${S.nopago.length})</h3>`;
-  const l=[...S.nopago].sort((a,b)=>b.f.localeCompare(a.f)).slice(0,40);
-  if(!l.length)h+=`<div class="sp">Sin registros.</div>`;
-  l.forEach(p=>{const c=S.corr.find(x=>x.id===p.c);h+=`<div class="row"><div class="n"><b>${c.nombre}</b><small>${fmt(p.f)}</small></div><span>${Gs(p.m)}</span></div>`});
-  return h+`</div>`;
-}
 function vAj(){
   const lb=lastB(),ask=ls.g(K_ASK)!=='0';
   return `${instalarCard()}${pinCard()}<div class="card"><h3>☁️ Respaldo en Google Drive</h3>
@@ -148,7 +138,7 @@ function vAj(){
   <div class="g2"><button class="big" style="padding:12px;font-size:15px" onclick="backupDrive()">Respaldar ahora</button><button class="btn" onclick="restoreDrive()">Restaurar de Drive</button></div>
   <details class="mt"><summary>Conectar mi Google Drive (una sola vez)</summary>
   <div class="sp mt">ID de cliente de Google:</div><input id="cid" class="mt" placeholder="xxxx.apps.googleusercontent.com" value="${gcid()}" onchange="saveCid(this.value)">
-  <ol class="sp" style="padding-left:18px;line-height:1.6">
+  <ol class="nt" style="padding-left:18px;margin:8px 0">
   <li>Entrá a console.cloud.google.com y creá un proyecto.</li><li>Menú «APIs y servicios» → «Biblioteca» → activá <b>Google Drive API</b>.</li>
   <li>«Pantalla de consentimiento OAuth» → tipo Externo → agregá tu Gmail como <b>usuario de prueba</b>.</li>
   <li>«Credenciales» → Crear → ID de cliente OAuth → Aplicación web.</li>
@@ -163,7 +153,7 @@ function importar(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{con
 
 function openForm(t,fs,ok,init){
   const m=document.createElement('div');m.className='modal';
-  m.innerHTML=`<div class="sheet"><h3>${t}</h3>${fs.map(f=>f.t==='note'?`<div class="sp" style="margin-bottom:12px;line-height:1.5">${f.html}</div>`:f.t==='chk'?`<label class="chk"><input type="checkbox" id="f_${f.k}" ${f.v?'checked':''}> ${f.l}</label>`:f.t==='sel'?`<label>${f.l}<select id="f_${f.k}">${f.o.map(o=>`<option value="${o[0]}" ${o[0]==f.v?'selected':''}>${o[1]}</option>`).join('')}</select></label>`:`<label>${f.l}<input id="f_${f.k}" value="${f.t==='d'&&f.v?fmt(f.v):f.t==='n'&&f.v?fmtN(f.v):(f.v??'')}" ${f.t==='d'?'inputmode="numeric" placeholder="dd/mm/aaaa" oninput="mask(event)"':f.t==='n'?'inputmode="numeric" oninput="this.value=fmtN(this.value)"':''}></label>`).join('')}
+  m.innerHTML=`<div class="sheet"><h3>${t}</h3>${fs.map(f=>f.t==='note'?`<div class="nt">${f.html}</div>`:f.t==='chk'?`<label class="chk"><input type="checkbox" id="f_${f.k}" ${f.v?'checked':''}> ${f.l}</label>`:f.t==='sel'?`<label>${f.l}<select id="f_${f.k}">${f.o.map(o=>`<option value="${o[0]}" ${o[0]==f.v?'selected':''}>${o[1]}</option>`).join('')}</select></label>`:`<label>${f.l}<input id="f_${f.k}" value="${f.t==='d'&&f.v?fmt(f.v):f.t==='n'&&f.v?fmtN(f.v):(f.v??'')}" ${f.t==='d'?'inputmode="numeric" placeholder="dd/mm/aaaa" oninput="mask(event)"':f.t==='n'?'inputmode="numeric" oninput="this.value=fmtN(this.value)"':''}></label>`).join('')}
   <div class="g2 mt"><button class="btn" id="fx">Cancelar</button><button class="big" id="fo" style="padding:11px">Guardar</button></div></div>`;
   document.body.appendChild(m);
   if(init)init(m);
@@ -259,7 +249,7 @@ function modal(html){const m=document.createElement('div');m.className='modal';m
 function askBackup(){
   if(ls.g(K_ASK)==='0'||lastB()===today()||ls.g(K_SNZ)===today())return;
   const ult=lastB()?fmt(lastB()):'nunca';
-  const m=modal(`<h3>💾 Copia de seguridad</h3><div class="sp" style="margin-bottom:12px">Hoy todavía no respaldaste tus datos. Última copia: <b>${ult}</b>.<br>${gcid()?'Se guardará en tu Google Drive.':'Aún no conectaste Google Drive: se descargará un archivo.'}</div>
+  const m=modal(`<h3>💾 Copia de seguridad</h3><div class="nt">Hoy todavía no respaldaste tus datos. Última copia: <b>${ult}</b>.<br>${gcid()?'Se guardará en tu Google Drive.':'Aún no conectaste Google Drive: se descargará un archivo.'}</div>
   <button class="big" id="bk1">Respaldar ahora</button><div class="g2 mt"><button class="btn" id="bk2">Más tarde</button><button class="btn" id="bk3">Hoy no</button></div>`);
   m.querySelector('#bk1').onclick=async()=>{m.remove();if(gcid())await backupDrive();else{exportar();ls.s(K_LB,today())}};
   m.querySelector('#bk2').onclick=()=>m.remove();
@@ -561,6 +551,66 @@ function detalleCuotas(id,desdeIn,telIn){
   m.querySelector('#ds').onclick=()=>{if(tel()!==(c.tel||'')){c.tel=tel();save()}waOpen(msgDetalle(c,rows),tel())};
   m.querySelector('#dc').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(msgDetalle(c,rows)).then(()=>toast('Detalle copiado'),()=>toast('No se pudo copiar'))};
   m.querySelector('#dx').onclick=()=>m.remove();
+}
+
+/* ===== Historial por fechas ===== */
+const APPN='CRz VILLA';
+let hf=null;
+const iniMes=f=>f.slice(0,8)+'01';
+const hfGet=()=>hf||(hf={d:iniMes(today()),h:today()});
+function hfSet(k,v){
+  const x=v.match(/^(\d\d)\/(\d\d)\/(\d{4})$/),s=x&&`${x[3]}-${x[2]}-${x[1]}`;
+  if(!s||iso(dt(s))!==s)return toast('Fecha inválida (dd/mm/aaaa)');
+  hfGet()[k]=s;if(hf.d>hf.h){const a=hf.d;hf.d=hf.h;hf.h=a}render();
+}
+function hfRapido(t){
+  const h=today();
+  if(t==='mes')hf={d:iniMes(h),h};
+  else if(t==='ant'){const u=addD(iniMes(h),-1);hf={d:iniMes(u),h:u}}
+  else if(t==='7')hf={d:addD(h,-6),h};
+  else hf={d:addD(h,-30),h};
+  render();
+}
+function datosHist(){
+  const {d,h}=hfGet(),fin=h>today()?today():h,rows=[];let f=d,g=0;
+  while(f<=fin&&g++<400){rows.push({f,t:totalDia(f),np:S.nopago.filter(p=>p.f===f).length});f=addD(f,1)}
+  const inR=x=>x.f>=d&&x.f<=h;
+  return {d,h,rows,cob:rows.reduce((a,x)=>a+x.t,0),np:rows.reduce((a,x)=>a+x.np,0),dias:rows.filter(x=>x.t>0).length,
+    ren:S.renov.filter(inR).reduce((a,x)=>a+x.m,0),nop:S.nopago.filter(inR).sort((a,b)=>b.f.localeCompare(a.f))};
+}
+function vHist(){
+  const x=datosHist(),chip=(k,t)=>`<button class="btn sm" onclick="hfRapido('${k}')">${t}</button>`;
+  let h=`<div class="card"><h3>Filtrar por fechas</h3><div class="g2">
+  <label class="lb">Desde<input inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" value="${fmt(x.d)}" oninput="mask(event)" onchange="hfSet('d',this.value)"></label>
+  <label class="lb">Hasta<input inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" value="${fmt(x.h)}" oninput="mask(event)" onchange="hfSet('h',this.value)"></label></div>
+  <div class="chips mt">${chip('mes','Este mes')}${chip('ant','Mes pasado')}${chip('7','7 días')}${chip('31','31 días')}</div></div>
+  <div class="card"><div class="kg"><div><small>Total cobrado</small><b>${Gs(x.cob)}</b></div><div><small>Renovados</small><b>${Gs(x.ren)}</b></div>
+  <div><small>Días con cobro</small><b>${x.dias}</b></div><div><small>No pagó</small><b>${x.np}</b></div></div>
+  <button class="big mt" onclick="waHist()">📲 Enviar detalle por WhatsApp</button></div>
+  <div class="card"><h3>Detalle por día</h3>`;
+  [...x.rows].reverse().forEach(r=>{
+    h+=`<div class="row" onclick="fecha='${r.f}';view='hoy';render()"><div class="n"><b>${fmt(r.f)}</b><small>${DIAS[dt(r.f).getDay()]}${r.np?' · '+r.np+' no pagó':''}</small></div><b>${r.t?Gs(r.t):'—'}</b></div>`});
+  if(!x.rows.length)h+=`<div class="sp">No hay días en este rango.</div>`;
+  h+=`</div><div class="card"><h3>No pagó (${x.nop.length})</h3>`;
+  if(!x.nop.length)h+=`<div class="sp">Sin registros en este período.</div>`;
+  x.nop.slice(0,60).forEach(p=>{const c=S.corr.find(k=>k.id===p.c);h+=`<div class="row"><div class="n"><b>${c?esc(c.nombre):'—'}</b><small>${fmt(p.f)}</small></div><span>${Gs(p.m)}</span></div>`});
+  if(x.nop.length>60)h+=`<div class="sp mt">Se muestran los 60 más recientes.</div>`;
+  return h+`</div>`;
+}
+function msgHist(){
+  const x=datosHist(),dia=f=>DIAS[dt(f).getDay()].slice(0,3);
+  const lines=x.rows.filter(r=>r.t>0||r.np>0).map(r=>`${dia(r.f)} ${fmt(r.f).slice(0,5)} · ${r.t?Gs(r.t):'sin cobros'}${r.np?' · '+r.np+' no pagó':''}`);
+  return `📊 ${APPN}\nCobros del ${fmt(x.d)} al ${fmt(x.h)}\n\n💰 Total cobrado: ${Gs(x.cob)}\n🔄 Renovados: ${Gs(x.ren)}\n📅 Días con cobro: ${x.dias}\n`+(x.np?`❌ No pagó: ${x.np}\n`:'')+
+  `\n`+(lines.join('\n')||'Sin movimientos en este período.')+`\n\nGenerado el ${fmt(today())}`;
+}
+function waHist(){
+  const m=modal(`<h3>📲 Enviar detalle</h3><label class="lb">WhatsApp (opcional; si lo dejás vacío elegís el contacto)<input id="ht" inputmode="tel" placeholder="0981 123 456"></label>
+  <label class="lb mt">Mensaje (podés editarlo)<textarea id="hm" rows="12" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit">${esc(msgHist())}</textarea></label>
+  <div class="g2 mt"><button class="btn" id="hc">Copiar</button><button class="big" id="hs" style="padding:11px">Enviar</button></div><button class="btn mt" id="hx" style="width:100%">Cerrar</button>`);
+  const val=()=>m.querySelector('#hm').value;
+  m.querySelector('#hs').onclick=()=>waOpen(val(),m.querySelector('#ht').value);
+  m.querySelector('#hc').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(val()).then(()=>toast('Detalle copiado'),()=>toast('No se pudo copiar'))};
+  m.querySelector('#hx').onclick=()=>m.remove();
 }
 
 const TABS=[['hoy','📅','Hoy'],['corr','👥','Corredores'],['caja','💰','Caja'],['hist','🕘','Historial'],['aj','⚙️','Ajustes']];
