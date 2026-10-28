@@ -323,14 +323,15 @@ function filtrados(){
   return o?[...l].sort(o):l;
 }
 function cardCorr(c){
-  const s=saldo(c),pc=Math.min(100,pagado(c)/c.deuda*100),q=qRest(c),m=mora(c);
+  const s=saldo(c),pc=Math.min(100,pagado(c)/c.deuda*100),q=qRest(c),m=mora(c),du=infoDeshacer(c),duOk=du&&du.r&&du.r.f>=addD(today(),-30);
   return `<div class="card"><div class="row" style="border:0;padding:0"><div class="n"><b>${esc(c.nombre)}</b><small>Cuota ${c.cuota?Gs(c.cuota):'—'}${ultPago(c)?' · último pago '+fmt(ultPago(c)):''}</small></div>
   ${m>=2?`<span class="chip c-no">${m} días sin pagar</span>`:''}<span class="chip ${s<=0?'c-ok':q<=7?'c-pe':'c-ok'}" style="margin-left:6px">${s<=0?'Saldado':q+' cuotas'}</span></div>
   <div class="bar"><i style="width:${pc}%"></i></div><div class="sp"><span>Pagado ${Gs(pagado(c))}</span><span>Saldo ${Gs(Math.max(s,0))}</span></div>
   <div class="g3 mt"><button class="btn sm" onclick="editCorr('${c.id}')">✏️ Editar</button><button class="btn sm" onclick="pagosCorr('${c.id}')">🧾 Pagos</button><button class="btn sm" onclick="detalleCuotas('${c.id}')">📅 Detalle</button></div>
   <div class="g2" style="margin-top:6px"><button class="btn sm cob" onclick="waCorr('${c.id}')">📲 Estado de cuenta</button><button class="btn sm" onclick="renovarCorr('${c.id}')">🔄 Renovar</button></div>
   ${m>=2?`<button class="btn sm rev mt" style="width:100%" onclick="waCorr('${c.id}','mora')">🔔 Recordar atraso por WhatsApp</button>`:''}
-  ${q>0&&q<=7&&m<2?`<button class="btn sm cob mt" style="width:100%" onclick="waCorr('${c.id}','venc')">💬 Ofrecer renovación por WhatsApp</button>`:''}</div>`;
+  ${q>0&&q<=7&&m<2?`<button class="btn sm cob mt" style="width:100%" onclick="waCorr('${c.id}','venc')">💬 Ofrecer renovación por WhatsApp</button>`:''}
+  ${duOk?`<button class="btn sm rev mt" style="width:100%" onclick="deshacerRenov('${c.id}')">↩️ Deshacer renovación del ${fmt(du.r.f).slice(0,5)}</button>`:''}</div>`;
 }
 function listaCorr(){const l=filtrados();return l.length?l.map(cardCorr).join(''):'<div class="card sp">No hay corredores con ese filtro.</div>'}
 function vCorr(){
@@ -490,7 +491,8 @@ function renovarCorr(id){
     {k:'cap',l:'Monto del nuevo préstamo (Gs.)',t:'n',v:cap0},
     {k:'f',l:'Fecha de renovación',t:'d',v:today()}],r=>{
     if(!r.d||!r.q){toast('Indicá nueva deuda y cuota');return false}
-    if(r.m)S.renov.push({id:uid(),c:id,m:r.m,f:r.f});
+    const prev={deuda:c.deuda,cuota:c.cuota,cap:c.cap,previo:c.previo,desde:c.desde,activo:c.activo};
+    S.renov.push({id:uid(),c:id,m:r.m||0,f:r.f,prev});
     Object.assign(c,{deuda:r.d,cuota:r.q,cap:r.cap,previo:0,desde:addD(r.f,1),activo:true});save();render();toast('Préstamo renovado')},
   m=>{
     const g=k=>m.querySelector('#f_'+k),n=k=>parseInt(String(g(k).value).replace(/\D/g,''))||0,set=(k,v)=>{g(k).value=fmtN(v)};
@@ -611,6 +613,33 @@ function waHist(){
   m.querySelector('#hs').onclick=()=>waOpen(val(),m.querySelector('#ht').value);
   m.querySelector('#hc').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(val()).then(()=>toast('Detalle copiado'),()=>toast('No se pudo copiar'))};
   m.querySelector('#hx').onclick=()=>m.remove();
+}
+
+/* ===== Deshacer renovación ===== */
+const SEED_R_MAX=SEED.r.reduce((a,x)=>x[2]>a?x[2]:a,'');
+const CAMPOS_R=['deuda','cuota','cap','previo','desde','activo'];
+function infoDeshacer(c){
+  const L=S.renov.filter(x=>x.c===c.id),cp=L.filter(x=>x.prev);
+  if(cp.length){const r=cp[cp.length-1];return {r,prev:r.prev,exacto:true}}
+  const nu=L.filter(x=>x.f>SEED_R_MAX);
+  if(nu.length>1)return {multi:true};
+  if(nu.length!==1)return null;
+  const i=/^c\d+$/.test(c.id)?+c.id.slice(1):-1,s=SEED.c[i];
+  if(!s||s.n!==c.nombre)return null;
+  return {r:nu[0],prev:{deuda:s.d,cuota:s.q,cap:s.cap,previo:s.p,desde:undefined,activo:s.a},exacto:false};
+}
+function aplicarPrev(c,prev){CAMPOS_R.forEach(k=>{if(prev[k]===undefined)delete c[k];else c[k]=prev[k]})}
+function deshacerRenov(id){
+  const c=cget(id),u=infoDeshacer(c);
+  if(!u||!u.r)return toast('No hay una renovación para deshacer en este corredor');
+  const nuevo={...c};aplicarPrev(nuevo,u.prev);
+  const s=Math.max(saldo(nuevo),0),q=nuevo.cuota?Math.ceil(s/nuevo.cuota):0;
+  const m=modal(`<h3>↩️ Deshacer renovación</h3><div class="nt"><b>${esc(c.nombre)}</b> · renovación del ${fmt(u.r.f)} (efectivo ${Gs(u.r.m)})<br><br>
+  Después de deshacer:<br>• Deuda total: <b>${Gs(nuevo.deuda)}</b> (ahora ${Gs(c.deuda)})<br>• Cuota diaria: <b>${Gs(nuevo.cuota)}</b> (ahora ${Gs(c.cuota)})<br>• Saldo pendiente: <b>${Gs(s)}</b> (${q} cuotas)<br><br>
+  Se quita esta renovación de la Caja. <b>Los cobros ya cargados no se tocan.</b>${u.exacto?'':'<br><br>⚠️ Los valores se toman de la planilla original. Si habías cambiado la deuda o la cuota a mano antes de renovar, revisalo con «Editar».'}</div>
+  <div class="g2 mt"><button class="btn" id="ux">Cancelar</button><button class="big" id="uo" style="padding:11px">Deshacer</button></div>`);
+  m.querySelector('#ux').onclick=()=>m.remove();
+  m.querySelector('#uo').onclick=()=>{aplicarPrev(c,u.prev);S.renov=S.renov.filter(x=>x.id!==u.r.id);save();m.remove();render();toast('Renovación deshecha')};
 }
 
 const TABS=[['hoy','📅','Hoy'],['corr','👥','Corredores'],['caja','💰','Caja'],['hist','🕘','Historial'],['aj','⚙️','Ajustes']];
